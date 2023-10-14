@@ -1,16 +1,16 @@
 output "ebs_csi_driver_name" {
   description = "The Name of the EBS CSI driver"
-  value       = kubernetes_csi_driver.ebs.metadata[0].name
+  value       = kubernetes_csi_driver_v1.ebs.metadata[0].name
 }
 
 output "ebs_csi_driver_controller_role_arn" {
   description = "The Name of the EBS CSI driver controller IAM role ARN"
-  value       = module.ebs_controller_role.this_iam_role_arn
+  value       = module.ebs_controller_role.iam_role_arn
 }
 
 output "ebs_csi_driver_controller_role_name" {
   description = "The Name of the EBS CSI driver controller IAM role name"
-  value       = module.ebs_controller_role.this_iam_role_name
+  value       = module.ebs_controller_role.iam_role_name
 }
 
 output "ebs_csi_driver_controller_role_policy_arn" {

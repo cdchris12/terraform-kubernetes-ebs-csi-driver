@@ -2,6 +2,11 @@ resource "kubernetes_daemonset" "node" {
   metadata {
     name      = local.daemonset_name
     namespace = var.namespace
+    labels    = var.labels
+    annotations = {
+      "prometheus.io/port"   = "8080"
+      "prometheus.io/scrape" = "false"
+    }
   }
 
   lifecycle {
@@ -40,18 +45,16 @@ resource "kubernetes_daemonset" "node" {
         }
 
         node_selector = merge({
-          "beta.kubernetes.io/os" : "linux",
-        }, var.extra_node_selectors)
+          "kubernetes.io/os" : "linux",
+        }, var.extra_node_selectors, var.node_extra_node_selectors)
 
-        host_network        = true
-        priority_class_name = "system-cluster-critical"
-
-        toleration {
-          operator = "Exists"
-        }
+        host_network                    = true
+        service_account_name            = kubernetes_service_account.node.metadata[0].name
+        automount_service_account_token = true
+        priority_class_name             = "system-node-critical"
 
         dynamic "toleration" {
-          for_each = var.node_tolerations
+          for_each = length(var.node_tolerations) > 0 ? var.csi_controller_tolerations : [{ operator = "Exists" }]
           content {
             key                = lookup(toleration.value, "key", null)
             operator           = lookup(toleration.value, "operator", null)
@@ -63,13 +66,15 @@ resource "kubernetes_daemonset" "node" {
 
         container {
           name  = "ebs-plugin"
-          image = "${var.ebs_csi_controller_image == "" ? "amazon/aws-ebs-csi-driver" : var.ebs_csi_controller_image}:${local.ebs_csi_driver_version}"
-          args = [
+          image = "${local.ebs_csi_controller_image}:${local.ebs_csi_driver_version}"
+          args = flatten([
             "node",
+            "--http-endpoint=:8080",
             "--endpoint=$(CSI_ENDPOINT)",
             "--logtostderr",
-            "--v=5"
-          ]
+            "--v=${tostring(var.log_level)}",
+            var.volume_attach_limit == -1 ? [] : ["--volume-attach-limit=${var.volume_attach_limit}"]
+          ])
 
           security_context {
             privileged = true
@@ -78,6 +83,15 @@ resource "kubernetes_daemonset" "node" {
           env {
             name  = "CSI_ENDPOINT"
             value = "unix:/csi/csi.sock"
+          }
+
+          env {
+            name = "CSI_NODE_NAME"
+            value_from {
+              field_ref {
+                field_path = "spec.nodeName"
+              }
+            }
           }
 
           volume_mount {
@@ -114,15 +128,32 @@ resource "kubernetes_daemonset" "node" {
             period_seconds        = 10
             failure_threshold     = 5
           }
+
+          readiness_probe {
+            http_get {
+              path = "/healthz"
+              port = "healthz"
+            }
+
+            initial_delay_seconds = 10
+            timeout_seconds       = 3
+            period_seconds        = 10
+            failure_threshold     = 5
+          }
+
+          resources {
+            requests = var.node_ebs_plugin_resources.requests
+            limits   = var.node_ebs_plugin_resources.limits
+          }
         }
 
         container {
           name  = "node-driver-registrar"
-          image = "quay.io/k8scsi/csi-node-driver-registrar:v2.1.0"
+          image = "${var.csi_node_driver_registrar_image}:${var.csi_node_driver_registrar_version}"
           args = [
             "--csi-address=$(ADDRESS)",
             "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)",
-            "--v=5"
+            "--v=${tostring(var.log_level)}",
           ]
 
           lifecycle {
@@ -152,11 +183,16 @@ resource "kubernetes_daemonset" "node" {
             mount_path = "/registration"
             name       = "registration-dir"
           }
+
+          resources {
+            requests = var.node_driver_registrar_resources.requests
+            limits   = var.node_driver_registrar_resources.limits
+          }
         }
 
         container {
           name  = "liveness-probe"
-          image = "quay.io/k8scsi/livenessprobe:${local.liveness_probe_version}"
+          image = "${var.liveness_probe_image}:${var.liveness_probe_version}"
           args = [
             "--csi-address=/csi/csi.sock"
           ]
@@ -164,6 +200,11 @@ resource "kubernetes_daemonset" "node" {
           volume_mount {
             mount_path = "/csi"
             name       = "plugin-dir"
+          }
+
+          resources {
+            requests = var.node_liveness_probe_resources.requests
+            limits   = var.node_liveness_probe_resources.limits
           }
         }
 

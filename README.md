@@ -1,4 +1,4 @@
-# Kubernetes EBS CSI driver Terraform module 
+# Kubernetes EBS CSI driver Terraform module
 
 Terraform module which creates Kubernetes EBS CSI controller resources on AWS EKS.
 
@@ -29,15 +29,12 @@ provider "kubernetes" {
   host                   = data.aws_eks_cluster.cluster.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
   token                  = data.aws_eks_cluster_auth.cluster.token
-  load_config_file       = false
-  version                = "~> 1.11.4"
 }
 
 module "ebs_csi_driver_controller" {
   source = "DrFaust92/ebs-csi-driver/kubernetes"
   version = "<VERSION>"
 
-  ebs_csi_controller_image                   = ""
   ebs_csi_controller_role_name               = "ebs-csi-driver-controller"
   ebs_csi_controller_role_policy_name_prefix = "ebs-csi-driver-policy"
   oidc_url                                   = aws_iam_openid_connect_provider.openid_connect.url
@@ -49,43 +46,99 @@ module "ebs_csi_driver_controller" {
 
 | Name | Version |
 |------|---------|
-| terraform | >= 0.12.6 |
-| kubernetes | >= 1.11.4 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 0.12.6 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.40.0 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | >= 1.11.4 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | n/a |
-| kubernetes | >= 1.11.4 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.22.0 |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | 2.12.1 |
+
+## Modules
+
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_ebs_controller_role"></a> [ebs\_controller\_role](#module\_ebs\_controller\_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc | 4.24.1 |
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [aws_iam_policy.ebs_controller_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [kubernetes_cluster_role.attacher](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role) | resource |
+| [kubernetes_cluster_role.node](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role) | resource |
+| [kubernetes_cluster_role.provisioner](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role) | resource |
+| [kubernetes_cluster_role.resizer](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role) | resource |
+| [kubernetes_cluster_role.snapshotter](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role) | resource |
+| [kubernetes_cluster_role_binding.attacher](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role_binding) | resource |
+| [kubernetes_cluster_role_binding.node](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role_binding) | resource |
+| [kubernetes_cluster_role_binding.provisioner](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role_binding) | resource |
+| [kubernetes_cluster_role_binding.resizer](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role_binding) | resource |
+| [kubernetes_cluster_role_binding.snapshotter](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/cluster_role_binding) | resource |
+| [kubernetes_csi_driver_v1.ebs](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/csi_driver_v1) | resource |
+| [kubernetes_daemonset.node](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/daemonset) | resource |
+| [kubernetes_deployment.ebs_csi_controller](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/deployment) | resource |
+| [kubernetes_service_account.csi_driver](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/service_account) | resource |
+| [kubernetes_service_account.node](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/service_account) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| csi\_controller\_replica\_count | Number of EBS CSI driver controller pods | `number` | `2` | no |
-| csi\_controller\_tolerations | CSI driver controller tolerations | `list(map(string))` | `[]` | no |
-| ebs\_csi\_controller\_image | The EBS CSI driver controller's image | `string` | `""` | no |
-| ebs\_csi\_controller\_role\_name | The name of the EBS CSI driver IAM role | `string` | `"ebs-csi-driver-controller"` | no |
-| ebs\_csi\_controller\_role\_policy\_name\_prefix | The prefix of the EBS CSI driver IAM policy | `string` | `"ebs-csi-driver-policy"` | no |
-| eks\_cluster\_id | ID of the Kubernetes cluster used for tagging provisioned EBS volumes | `string` | `""` | no |
-| enable\_volume\_resizing | Whether to enable volume resizing | `bool` | `false` | no |
-| enable\_volume\_snapshot | Whether to enable volume snapshotting | `bool` | `false` | no |
-| extra\_create\_metadata | If set, add pv/pvc metadata to plugin create requests as parameters. | `bool` | `false` | no |
-| extra\_node\_selectors | A map of extra node selectors | `map(string)` | `{}` | no |
-| namespace | The K8s namespace for all EBS CSI driver resources | `string` | `"kube-system"` | no |
-| node\_tolerations | CSI driver node tolerations | `list(map(string))` | `[]` | no |
-| oidc\_url | EKS OIDC provider URL, to allow pod to assume role using IRSA | `string` | n/a | yes |
-| tags | A map of tags to add to all resources | `map(string)` | `{}` | no |
+| <a name="input_additional_iam_policies_arns"></a> [additional\_iam\_policies\_arns](#input\_additional\_iam\_policies\_arns) | The EBS CSI driver controller's additional policies to allow more actions (kms, etc) | `list(string)` | `[]` | no |
+| <a name="input_controller_csi_attacher_resources"></a> [controller\_csi\_attacher\_resources](#input\_controller\_csi\_attacher\_resources) | The controller csi attacher resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_controller_csi_provisioner_resources"></a> [controller\_csi\_provisioner\_resources](#input\_controller\_csi\_provisioner\_resources) | The controller csi provisioner resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_controller_csi_resizer_resources"></a> [controller\_csi\_resizer\_resources](#input\_controller\_csi\_resizer\_resources) | The controller csi resizer resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_controller_csi_snapshotter_resources"></a> [controller\_csi\_snapshotter\_resources](#input\_controller\_csi\_snapshotter\_resources) | The controller csi snapshotter resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_controller_ebs_plugin_resources"></a> [controller\_ebs\_plugin\_resources](#input\_controller\_ebs\_plugin\_resources) | The controller ebs plugin resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_controller_extra_node_selectors"></a> [controller\_extra\_node\_selectors](#input\_controller\_extra\_node\_selectors) | A map of extra node selectors for controller pods | `map(string)` | `{}` | no |
+| <a name="input_csi_attacher_image"></a> [csi\_attacher\_image](#input\_csi\_attacher\_image) | The CSI attacher image | `string` | `"registry.k8s.io/sig-storage/csi-attacher"` | no |
+| <a name="input_csi_attacher_version"></a> [csi\_attacher\_version](#input\_csi\_attacher\_version) | The CSI attacher image version | `string` | `"v3.5.1"` | no |
+| <a name="input_csi_controller_replica_count"></a> [csi\_controller\_replica\_count](#input\_csi\_controller\_replica\_count) | Number of EBS CSI driver controller pods | `number` | `2` | no |
+| <a name="input_csi_controller_tolerations"></a> [csi\_controller\_tolerations](#input\_csi\_controller\_tolerations) | CSI driver controller tolerations | `list(map(string))` | `[]` | no |
+| <a name="input_csi_node_driver_registrar_image"></a> [csi\_node\_driver\_registrar\_image](#input\_csi\_node\_driver\_registrar\_image) | The CSI node driver registrar image | `string` | `"registry.k8s.io/sig-storage/csi-node-driver-registrar"` | no |
+| <a name="input_csi_node_driver_registrar_version"></a> [csi\_node\_driver\_registrar\_version](#input\_csi\_node\_driver\_registrar\_version) | The CSI node driver registrar image version | `string` | `"v2.9.0"` | no |
+| <a name="input_csi_provisioner_image"></a> [csi\_provisioner\_image](#input\_csi\_provisioner\_image) | The CSI provisioner image | `string` | `"registry.k8s.io/sig-storage/csi-provisioner"` | no |
+| <a name="input_csi_provisioner_tag_version"></a> [csi\_provisioner\_tag\_version](#input\_csi\_provisioner\_tag\_version) | The CSI provisioner tag version | `string` | `"v3.2.1"` | no |
+| <a name="input_csi_resizer_image"></a> [csi\_resizer\_image](#input\_csi\_resizer\_image) | The CSI resizer image | `string` | `"registry.k8s.io/sig-storage/csi-resizer"` | no |
+| <a name="input_csi_resizer_version"></a> [csi\_resizer\_version](#input\_csi\_resizer\_version) | The CSI resizer image version | `string` | `"v1.4.0"` | no |
+| <a name="input_csi_snapshotter_image"></a> [csi\_snapshotter\_image](#input\_csi\_snapshotter\_image) | The CSI snapshotter image | `string` | `"registry.k8s.io/sig-storage/csi-snapshotter"` | no |
+| <a name="input_csi_snapshotter_version"></a> [csi\_snapshotter\_version](#input\_csi\_snapshotter\_version) | The CSI snapshotter image version | `string` | `"v6.0.1"` | no |
+| <a name="input_default_fstype"></a> [default\_fstype](#input\_default\_fstype) | The default Filesystem type | `string` | `"ext4"` | no |
+| <a name="input_ebs_csi_controller_image"></a> [ebs\_csi\_controller\_image](#input\_ebs\_csi\_controller\_image) | The EBS CSI driver controller's image | `string` | `"k8s.gcr.io/provider-aws/aws-ebs-csi-driver"` | no |
+| <a name="input_ebs_csi_controller_role_name"></a> [ebs\_csi\_controller\_role\_name](#input\_ebs\_csi\_controller\_role\_name) | The name of the EBS CSI driver IAM role | `string` | `"ebs-csi-driver-controller"` | no |
+| <a name="input_ebs_csi_controller_role_policy_name_prefix"></a> [ebs\_csi\_controller\_role\_policy\_name\_prefix](#input\_ebs\_csi\_controller\_role\_policy\_name\_prefix) | The prefix of the EBS CSI driver IAM policy | `string` | `"ebs-csi-driver-policy"` | no |
+| <a name="input_ebs_csi_driver_version"></a> [ebs\_csi\_driver\_version](#input\_ebs\_csi\_driver\_version) | The EBS CSI driver controller's image version | `string` | `"v1.6.2"` | no |
+| <a name="input_eks_cluster_id"></a> [eks\_cluster\_id](#input\_eks\_cluster\_id) | ID of the Kubernetes cluster used for tagging provisioned EBS volumes | `string` | `""` | no |
+| <a name="input_enable_default_fstype"></a> [enable\_default\_fstype](#input\_enable\_default\_fstype) | Wheter to enable default Filesystem type | `bool` | `false` | no |
+| <a name="input_enable_volume_resizing"></a> [enable\_volume\_resizing](#input\_enable\_volume\_resizing) | Whether to enable volume resizing | `bool` | `false` | no |
+| <a name="input_enable_volume_snapshot"></a> [enable\_volume\_snapshot](#input\_enable\_volume\_snapshot) | Whether to enable volume snapshotting | `bool` | `false` | no |
+| <a name="input_extra_create_metadata"></a> [extra\_create\_metadata](#input\_extra\_create\_metadata) | If set, add pv/pvc metadata to plugin create requests as parameters. | `bool` | `false` | no |
+| <a name="input_extra_node_selectors"></a> [extra\_node\_selectors](#input\_extra\_node\_selectors) | A map of extra node selectors for all components | `map(string)` | `{}` | no |
+| <a name="input_labels"></a> [labels](#input\_labels) | A map of extra labels for all resources | `map(string)` | `{}` | no |
+| <a name="input_liveness_probe_image"></a> [liveness\_probe\_image](#input\_liveness\_probe\_image) | The liveness probe image | `string` | `"registry.k8s.io/sig-storage/livenessprobe"` | no |
+| <a name="input_liveness_probe_version"></a> [liveness\_probe\_version](#input\_liveness\_probe\_version) | The liveness probe image version | `string` | `"v2.5.0"` | no |
+| <a name="input_log_level"></a> [log\_level](#input\_log\_level) | The log level for the CSI Driver controller | `number` | `5` | no |
+| <a name="input_namespace"></a> [namespace](#input\_namespace) | The K8s namespace for all EBS CSI driver resources | `string` | `"kube-system"` | no |
+| <a name="input_node_driver_registrar_resources"></a> [node\_driver\_registrar\_resources](#input\_node\_driver\_registrar\_resources) | The node driver registrar resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_node_ebs_plugin_resources"></a> [node\_ebs\_plugin\_resources](#input\_node\_ebs\_plugin\_resources) | The node ebs plugin resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_node_extra_node_selectors"></a> [node\_extra\_node\_selectors](#input\_node\_extra\_node\_selectors) | A map of extra node selectors for node pods | `map(string)` | `{}` | no |
+| <a name="input_node_liveness_probe_resources"></a> [node\_liveness\_probe\_resources](#input\_node\_liveness\_probe\_resources) | The node liveness probe resources | <pre>object({<br>    requests = map(string)<br>    limits   = map(string)<br>  })</pre> | <pre>{<br>  "limits": {},<br>  "requests": {}<br>}</pre> | no |
+| <a name="input_node_tolerations"></a> [node\_tolerations](#input\_node\_tolerations) | CSI driver node tolerations | `list(map(string))` | `[]` | no |
+| <a name="input_oidc_url"></a> [oidc\_url](#input\_oidc\_url) | EKS OIDC provider URL, to allow pod to assume role using IRSA | `string` | n/a | yes |
+| <a name="input_tags"></a> [tags](#input\_tags) | A map of tags to add to all resources | `map(string)` | `{}` | no |
+| <a name="input_volume_attach_limit"></a> [volume\_attach\_limit](#input\_volume\_attach\_limit) | Configure maximum volume attachments per node. -1 means use default configuration | `number` | `-1` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| ebs\_csi\_driver\_controller\_role\_arn | The Name of the EBS CSI driver controller IAM role ARN |
-| ebs\_csi\_driver\_controller\_role\_name | The Name of the EBS CSI driver controller IAM role name |
-| ebs\_csi\_driver\_controller\_role\_policy\_arn | The Name of the EBS CSI driver controller IAM role policy ARN |
-| ebs\_csi\_driver\_controller\_role\_policy\_name | The Name of the EBS CSI driver controller IAM role policy name |
-| ebs\_csi\_driver\_name | The Name of the EBS CSI driver |
-
+| <a name="output_ebs_csi_driver_controller_role_arn"></a> [ebs\_csi\_driver\_controller\_role\_arn](#output\_ebs\_csi\_driver\_controller\_role\_arn) | The Name of the EBS CSI driver controller IAM role ARN |
+| <a name="output_ebs_csi_driver_controller_role_name"></a> [ebs\_csi\_driver\_controller\_role\_name](#output\_ebs\_csi\_driver\_controller\_role\_name) | The Name of the EBS CSI driver controller IAM role name |
+| <a name="output_ebs_csi_driver_controller_role_policy_arn"></a> [ebs\_csi\_driver\_controller\_role\_policy\_arn](#output\_ebs\_csi\_driver\_controller\_role\_policy\_arn) | The Name of the EBS CSI driver controller IAM role policy ARN |
+| <a name="output_ebs_csi_driver_controller_role_policy_name"></a> [ebs\_csi\_driver\_controller\_role\_policy\_name](#output\_ebs\_csi\_driver\_controller\_role\_policy\_name) | The Name of the EBS CSI driver controller IAM role policy name |
+| <a name="output_ebs_csi_driver_name"></a> [ebs\_csi\_driver\_name](#output\_ebs\_csi\_driver\_name) | The Name of the EBS CSI driver |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

@@ -3,5 +3,6 @@ terraform {
 
   required_providers {
     kubernetes = ">= 1.11.4"
+    aws        = ">= 3.40.0"
   }
 }
